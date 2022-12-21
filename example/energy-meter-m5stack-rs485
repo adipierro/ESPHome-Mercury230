@@ -1,10 +1,10 @@
 # Enable Home Assistant API
 api:
-#  encryption:
-#    key: "yourAPIkey"
+  encryption:
+    key: "kR2Q4ZGbcRDmA54q23C5UHhWsiOhr0SH1FS8cP89Cho="
 
 ota:
-#  password: "yourOTApa$$w0rd"
+  password: "18b21cf3a59f8fac85864c6582709ada"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -13,7 +13,7 @@ wifi:
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Energy Fallback Hotspot"
-    password: "12345678"
+    password: "lkqlyKWQr0fs"
 
 captive_portal:
 
@@ -22,6 +22,7 @@ substitutions:
   name: energy-meter
   devicename: energy-meter
   upper_devicename: Mercury-230
+  # location: В электрощите. # место установки
 
 external_components:
   - source: 
@@ -48,11 +49,11 @@ logger:
   level: DEBUG
   #baud_rate: 0
 
+
 web_server:
 
 uart:
   id: uart_bus
-  # pins are what M5Stack RS-485 use
   tx_pin: GPIO19
   rx_pin: GPIO22
   baud_rate: 9600
@@ -67,7 +68,7 @@ binary_sensor:
       inverted: true
     name: ${friendly_name} Button
 
-  # home assistant connected status
+  # статус устройства
   - platform: status
     name: ${friendly_name} Status
     id: statusbinary
@@ -82,21 +83,70 @@ binary_sensor:
             id: statuslight
             effect: Green
 
-# Button to restart the device
+light:
+  - platform: fastled_clockless
+    name: ${friendly_name}
+    pin: GPIO27
+    id: statuslight
+    chipset: SK6812
+    num_leds: 1
+    internal: true
+    rgb_order: grb
+    restore_mode: ALWAYS_OFF
+    effects:
+      - pulse:
+          name: Pulsing
+          transition_length: 2s
+          update_interval: 3s
+      - strobe:
+          name: Red
+          colors:
+            - state: true
+              color_brightness: 100%
+              red: 100%
+              green: 0%
+              blue: 0%
+              duration: 100ms
+            - state: false
+              duration: 600ms
+      - strobe:
+          name: Green
+          colors:
+            - state: true
+              color_brightness: 100%
+              red: 0%
+              green: 20%
+              blue: 0%
+              duration: 50ms
+            - state: false
+              duration: 2000ms
+      - strobe:
+          name: Blue
+          colors:
+            - state: true
+              color_brightness: 100%
+              red: 0%
+              green: 0%
+              blue: 50%
+              duration: 50ms
+            - state: false
+              duration: 2000ms
+
 button:
   - platform: restart
     name: ${friendly_name} Restart
 
+
 sensor:
   - platform: energy_meter_mercury230
     name: ${upper_devicename}
-    # указание на используемый UART-bus
+    # не забываем подключить uart
     uart_id: uart_bus
     
     # период цикла опроса счетчика
     update_interval: 5s
-    # адрес счетчика (не обязательный), если не указан, будет попытка обнаружить его с использованием пароля
-    # use_address: 1
+    # адрес счетчика (не обязательный), если не указан будет попытка обнаружить его с использованием пароля
+    use_address: 102
     # пароль УКАЗЫВАТЬ В КАВЫЧКАХ для подключения (не обязательный), в случае дефолтного можно не указывать
     # password: "111111"
     # тип пароля HEX или ASCII
@@ -258,4 +308,4 @@ text_sensor:
     ssid:
       name: ${upper_devicename} SSID
     bssid:
-      name: ${upper_devicename} BSSID 
+      name: ${upper_devicename} BSSID
