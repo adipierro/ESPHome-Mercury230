@@ -158,7 +158,7 @@ initParams = {
      # частота
      cv.Optional(CONF_FREQUENCY): sensor.sensor_schema(
         unit_of_measurement=UNIT_HERTZ,
-        accuracy_decimals=3,
+        accuracy_decimals=2,
         #device_class=DEVICE_CLASS_FREQUENCY,
         state_class=STATE_CLASS_MEASUREMENT,
         icon=ICON_FREQUENCY,
