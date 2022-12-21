@@ -52,6 +52,10 @@ CODEOWNERS = ["@Brokly"]
 DEPENDENCIES = ["sensor", "text_sensor", "uart"]
 AUTO_LOAD = ["output"]
 
+CONF_ACTIVE_TARIFF_ONE = "active_tariff_one"
+CONF_REACTIVE_TARIFF_ONE = "reactive_tariff_one"
+CONF_ACTIVE_TARIFF_TWO = "active_tariff_two"
+CONF_REACTIVE_TARIFF_TWO = "reactive_tariff_two"
 CONF_ACTIVE_LED_PIN = "active_led_pin"
 CONF_FIRM_VERSION = "firmware_version"
 ICON_FIRM_VERSION = "mdi:select-inverse"
@@ -154,7 +158,7 @@ initParams = {
      # частота
      cv.Optional(CONF_FREQUENCY): sensor.sensor_schema(
         unit_of_measurement=UNIT_HERTZ,
-        accuracy_decimals=1,
+        accuracy_decimals=3,
         #device_class=DEVICE_CLASS_FREQUENCY,
         state_class=STATE_CLASS_MEASUREMENT,
         icon=ICON_FREQUENCY,
@@ -168,6 +172,34 @@ initParams = {
      ),
      # реактивная энергия
      cv.Optional(CONF_IMPORT_REACTIVE_ENERGY): sensor.sensor_schema(
+        unit_of_measurement=UNIT_KILOWATT_HOURS,
+        accuracy_decimals=2,
+        device_class=DEVICE_CLASS_ENERGY,
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+     ),
+     # активная энергия T1
+     cv.Optional(CONF_ACTIVE_TARIFF_ONE): sensor.sensor_schema(
+        unit_of_measurement=UNIT_KILOWATT_HOURS,
+        accuracy_decimals=2,
+        device_class=DEVICE_CLASS_ENERGY,
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+     ),
+     # реактивная энергия T1
+     cv.Optional(CONF_REACTIVE_TARIFF_ONE): sensor.sensor_schema(
+        unit_of_measurement=UNIT_KILOWATT_HOURS,
+        accuracy_decimals=2,
+        device_class=DEVICE_CLASS_ENERGY,
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+     ),
+     # активная энергия T2
+     cv.Optional(CONF_ACTIVE_TARIFF_TWO): sensor.sensor_schema(
+        unit_of_measurement=UNIT_KILOWATT_HOURS,
+        accuracy_decimals=2,
+        device_class=DEVICE_CLASS_ENERGY,
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+     ),
+     # реактивная энергия T2
+     cv.Optional(CONF_REACTIVE_TARIFF_TWO): sensor.sensor_schema(
         unit_of_measurement=UNIT_KILOWATT_HOURS,
         accuracy_decimals=2,
         device_class=DEVICE_CLASS_ENERGY,
@@ -268,6 +300,22 @@ async def to_code(config):
     if (CONF_IMPORT_REACTIVE_ENERGY) in config:
         sens = await sensor.new_sensor(config[CONF_IMPORT_REACTIVE_ENERGY])
         cg.add(var.set_ValueR(sens))
+    # активная энергия T1
+    if (CONF_ACTIVE_TARIFF_ONE) in config:
+        sens = await sensor.new_sensor(config[CONF_ACTIVE_TARIFF_ONE])
+        cg.add(var.set_ValueAT1(sens))
+    # реактивная энергия T1
+    if (CONF_REACTIVE_TARIFF_ONE) in config:
+        sens = await sensor.new_sensor(config[CONF_REACTIVE_TARIFF_ONE])
+        cg.add(var.set_ValueRT1(sens))
+    # активная энергия T2
+    if (CONF_ACTIVE_TARIFF_TWO) in config:
+        sens = await sensor.new_sensor(config[CONF_ACTIVE_TARIFF_TWO])
+        cg.add(var.set_ValueAT2(sens))
+    # реактивная энергия T2
+    if (CONF_REACTIVE_TARIFF_TWO) in config:
+        sens = await sensor.new_sensor(config[CONF_REACTIVE_TARIFF_TWO])
+        cg.add(var.set_ValueRT2(sens))
     # вольты
     if (CONF_VOLTAGE+PhA) in config:
         sens = await sensor.new_sensor(config[CONF_VOLTAGE+PhA])
@@ -340,4 +388,3 @@ async def to_code(config):
     # update intrerval
     if (CONF_UPDATE_INTERVAL) in config:
         cg.add(var.set_update_interval(config[CONF_UPDATE_INTERVAL]))
-

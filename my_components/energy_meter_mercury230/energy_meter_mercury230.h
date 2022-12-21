@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <Arduino.h>
@@ -72,7 +71,10 @@ class Mercury : public Sensor, public PollingComponent  {
                             GET_TIME_CODE,
                             GET_CRC,
                             GET_VALUE,
-                            GET_ADDR
+                            GET_ADDR,
+                            GET_VALUE_T1,
+                            GET_VALUE_T2,
+                            GET_MANUF
     };
 
     // тип запроса чтения параметров
@@ -128,7 +130,11 @@ class Mercury : public Sensor, public PollingComponent  {
         Sensor *AngleC {nullptr};
         Sensor *Freq {nullptr};
         Sensor *ValueA {nullptr};
+        Sensor *ValueAT1 {nullptr};
+        Sensor *ValueAT2 {nullptr};
         Sensor *ValueR {nullptr};
+        Sensor *ValueRT1 {nullptr};
+        Sensor *ValueRT2 {nullptr};
         TextSensor *vers_string {nullptr};
         TextSensor *error_string {nullptr};
         TextSensor *sn_string {nullptr};
@@ -142,6 +148,8 @@ class Mercury : public Sensor, public PollingComponent  {
         bool cbAngles=false;
         bool cbFreq=false;
         bool cbValues=false;
+        bool cbValuesT1=false;
+        bool cbValuesT2=false;
 
         // калбэки для отладки
         bool debugIn=false;
@@ -238,7 +246,11 @@ class Mercury : public Sensor, public PollingComponent  {
             LOG_SENSOR("", "Phase shift CA ", this->AngleC);
             LOG_SENSOR("", "Frequency", this->Freq);
             LOG_SENSOR("", "Values Active+ ", this->ValueA);
+            LOG_SENSOR("", "Values Active+ T1 ", this->ValueAT1);
+            LOG_SENSOR("", "Values Active+ T2 ", this->ValueAT2);
             LOG_SENSOR("", "Values Reactive+ ", this->ValueR);
+            LOG_SENSOR("", "Values Reactive+ T1 ", this->ValueRT1);
+            LOG_SENSOR("", "Values Reactive+ T2 ", this->ValueRT1);
             LOG_TEXT_SENSOR("", "Date of Мanufacture ", this->fab_date_string);
             LOG_TEXT_SENSOR("", "Serial Number ", this->sn_string);
             LOG_TEXT_SENSOR("", "Version ", this->vers_string);
@@ -292,7 +304,11 @@ class Mercury : public Sensor, public PollingComponent  {
         void set_AngleC(sensor::Sensor *sens) {this->AngleC=sens;}
         void set_Freq(sensor::Sensor *sens) {this->Freq=sens;}
         void set_ValueA(sensor::Sensor *sens) {this->ValueA=sens;}
+        void set_ValueAT1(sensor::Sensor *sens) {this->ValueAT1=sens;}
+        void set_ValueAT2(sensor::Sensor *sens) {this->ValueAT2=sens;}
         void set_ValueR(sensor::Sensor *sens) {this->ValueR=sens;}
+        void set_ValueRT1(sensor::Sensor *sens) {this->ValueRT1=sens;}
+        void set_ValueRT2(sensor::Sensor *sens) {this->ValueRT2=sens;}
         // версия
         void set_vers_string(text_sensor::TextSensor *sens) { this->vers_string = sens;}
         // ошибка
@@ -337,6 +353,8 @@ class Mercury : public Sensor, public PollingComponent  {
             cbAngles=(this->AngleA!=nullptr || this->AngleB!=nullptr || this->AngleC!=nullptr);
             cbFreq=(this->Freq!=nullptr);
             cbValues=(this->ValueA!=nullptr || this->ValueR!=nullptr);
+            cbValuesT1=(this->ValueAT1!=nullptr || this->ValueRT1!=nullptr);
+            cbValuesT2=(this->ValueAT2!=nullptr || this->ValueRT2!=nullptr);
             // включение отладки (TODO: увязать с флагом отладки)
             debugIn=true;  // будем печатать входящие
             debugOut=true; //  и исходящие пакеты

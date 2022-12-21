@@ -1,0 +1,261 @@
+# Enable Home Assistant API
+api:
+#  encryption:
+#    key: "yourAPIkey"
+
+ota:
+#  password: "yourOTApa$$w0rd"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Energy Fallback Hotspot"
+    password: "12345678"
+
+captive_portal:
+
+substitutions:
+  friendly_name: "Energy Meter"
+  name: energy-meter
+  devicename: energy-meter
+  upper_devicename: Mercury-230
+
+external_components:
+  - source: 
+      type: local
+      path: my_components     
+    components: [ energy_meter_mercury230 ]
+    refresh: 0s
+
+esphome:
+  name: $devicename
+  includes:
+    - my_components/energy_meter_mercury230/energy_meter_mercury230.h
+    - my_components/energy_meter_mercury230/mercury230_proto.h
+
+esp32:
+  board: m5stack-atom
+  framework:
+    type: arduino
+
+debug:
+
+logger:
+  #level: ERROR
+  level: DEBUG
+  #baud_rate: 0
+
+web_server:
+
+uart:
+  id: uart_bus
+  # pins are what M5Stack RS-485 use
+  tx_pin: GPIO19
+  rx_pin: GPIO22
+  baud_rate: 9600
+  data_bits: 8
+  parity: NONE
+  stop_bits: 1
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO39
+      inverted: true
+    name: ${friendly_name} Button
+
+  # home assistant connected status
+  - platform: status
+    name: ${friendly_name} Status
+    id: statusbinary
+    on_release:
+      then:
+        - light.turn_on:
+            id: statuslight
+            effect: Red
+    on_press:
+      then:
+        - light.turn_on:
+            id: statuslight
+            effect: Green
+
+# Button to restart the device
+button:
+  - platform: restart
+    name: ${friendly_name} Restart
+
+sensor:
+  - platform: energy_meter_mercury230
+    name: ${upper_devicename}
+    # указание на используемый UART-bus
+    uart_id: uart_bus
+    
+    # период цикла опроса счетчика
+    update_interval: 5s
+    # адрес счетчика (не обязательный), если не указан, будет попытка обнаружить его с использованием пароля
+    # use_address: 1
+    # пароль УКАЗЫВАТЬ В КАВЫЧКАХ для подключения (не обязательный), в случае дефолтного можно не указывать
+    # password: "111111"
+    # тип пароля HEX или ASCII
+    #pass_in_hex: true
+
+    # Напряжение по трем фазам
+    voltage_a:
+      id: VoltA
+      name: ${upper_devicename} Volts A
+    voltage_b:
+      id: VoltB
+      name: ${upper_devicename} Volts B
+    voltage_c:
+      id: VoltC
+      name: ${upper_devicename} Volts C
+    # Токи
+    current_summ:
+      id: Amps
+      name: ${upper_devicename} Ampers Summ
+      device_class: power
+    current_a:
+      id: AmpA
+      name: ${upper_devicename} Ampers A
+      device_class: power
+    current_b:
+      id: AmpB
+      name: ${upper_devicename} Ampers B
+      device_class: power
+    current_c:
+      id: AmpC
+      name: ${upper_devicename} Ampers C
+      device_class: power
+    # Мощности
+    power_summ:    
+      id: Watts
+      name: ${upper_devicename} Watts Summ
+      device_class: energy
+    power_a:
+      id: WattA
+      name: ${upper_devicename} Watts A
+      device_class: energy
+    power_b:
+      id: WattB
+      name: ${upper_devicename} Watts B
+      device_class: energy
+    power_c:
+      id: WattC
+      name: ${upper_devicename} Watts C
+      device_class: energy
+    # Коэфициенты
+    power_factor_a:
+      id: RatioA
+      name: ${upper_devicename} Ratio A
+    power_factor_b:
+      id: RatioB
+      name: ${upper_devicename} Ratio B
+    power_factor_c:
+      id: RatioC
+      name: ${upper_devicename} Ratio C
+    # Фазовые углы
+    phase_angle_a:
+      id: AngleA
+      name: ${upper_devicename} Angle A
+    phase_angle_b:
+      id: AngleB
+      name: ${upper_devicename} Angle B
+    phase_angle_c:
+      id: AngleC
+      name: ${upper_devicename} Angle C
+    # Показания
+    import_active_energy:
+      id: ValueA
+      name: ${upper_devicename} Value Active
+      state_class: total_increasing
+      device_class: energy
+      unit_of_measurement: "kWh"
+    import_reactive_energy:
+      id: ValueR
+      name: ${upper_devicename} Value Reactive
+      state_class: total_increasing
+      device_class: energy
+      unit_of_measurement: "kWh"
+    # показания по тарифу 1
+    active_tariff_one:
+      id: ValueAT1
+      name: ${upper_devicename} T1 Active
+      state_class: total_increasing
+      device_class: energy
+      unit_of_measurement: "kWh"
+    reactive_tariff_one:
+      id: ValueRT1
+      name: ${upper_devicename} T1 Reactive
+      state_class: total_increasing
+      device_class: energy
+      unit_of_measurement: "kWh"
+    # показания по тарифу 2
+    active_tariff_two:
+      id: ValueAT2
+      name: ${upper_devicename} T2 Active
+      state_class: total_increasing
+      device_class: energy
+      unit_of_measurement: "kWh"
+    reactive_tariff_two:
+      id: ValueRT2
+      name: ${upper_devicename} T2 Reactive
+      state_class: total_increasing
+      device_class: energy
+      unit_of_measurement: "kWh"
+    # Частота
+    frequency:
+      name: ${upper_devicename} Frequency
+      id: Freq
+      unit_of_measurement: "Hz"
+    serial_number:
+      name: ${upper_devicename} Serial Number
+      id: sn_string
+    connect_status:  
+      name: ${upper_devicename} Last Error
+      id: error_string
+    date_fabricate:  
+      name: ${upper_devicename} Date Fabricate
+      id: fab_string
+    # версия прошивки
+    firmware_version:
+      name: ${upper_devicename} Version
+      id: ver_string
+    # индикатор статуса связи
+    # active_led_pin: GPIO16
+  # уровень Wi-Fi-сигнала
+  - platform: wifi_signal
+    name: ${upper_devicename} WiFi Signal
+    update_interval: 30s
+    unit_of_measurement: "dBa"
+    state_class: measurement
+    device_class: signal_strength
+    accuracy_decimals: 0
+  # время работы устройства после загрузки
+  - platform: uptime
+    name: ${upper_devicename} Uptime Sensor
+
+text_sensor:
+#версия прошивки
+  - platform: version
+    name: $upper_devicename ESPHome Version
+#текстовая форма uptime    
+  - platform: template
+    name: ${upper_devicename} Uptime
+    entity_category: diagnostic
+    icon: 'mdi:timer'
+    lambda: |-
+      uint32_t dur=millis()/1000;
+      char buffer[19];
+      if(dur>=86400) sprintf(buffer,"%ud %uh %02um %02us", dur/86400, dur%86400/3600, dur%3600/60, dur%60);
+      else if(dur>=3600) sprintf(buffer,"%uh %02um %02us", dur/3600, dur%3600/60, dur%60);
+      else sprintf(buffer,"%um %02us", dur/60, dur%60);
+      return {buffer};
+# подключенная точка доступа Wi-Fi
+  - platform: wifi_info
+    ssid:
+      name: ${upper_devicename} SSID
+    bssid:
+      name: ${upper_devicename} BSSID 

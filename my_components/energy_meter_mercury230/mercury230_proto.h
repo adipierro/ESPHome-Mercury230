@@ -25,6 +25,7 @@
         bool waiteReply = false; // флаг ожидания ответа, поднимается при отправке, снимается при получении
         _replyReason lastError=REP_OK; // последний статус ответа
         uint32_t scanTimer=millis(); // таймер периодов связи
+        uint8_t counter=0; // счетчик цикла опроса
 
         //==================== ОБМЕН ДАННЫМИ ===================================
         // таблица быстрого рассчета КС
@@ -194,15 +195,37 @@
         void sGetFreq(){ _getParam(0x40); forSenfType = GET_FREQ;};
         // углы, для группового запроса указываем первую фазу
         void sGetAnglePh(){_getParam(0x51); forSenfType = GET_ANGLE_PH;};
-        //запрос параметров устройства
-        void sGetVers(){
-            sBuff->addr = addr;
-            sBuff->packType = READ_PARAMS;
-            sBuff->data[0]=1;
-            forSendSize = crc16mb(sendBuff, 5);
-            forSendArrow = 0;
-            forSenfType = GET_VERS;
+
+        //запрос параметров устройства (не работает на старых счетчиках)
+        // void sGetVers(){
+        //     sBuff->addr = addr;
+        //     sBuff->packType = READ_PARAMS;
+        //     sBuff->data[0]=1;
+        //     forSendSize = crc16mb(sendBuff, 5);
+        //     forSendArrow = 0;
+        //     forSenfType = GET_VERS;
+        // }
+
+        //Чтение версии прошивки
+        void sGetVers_old(){
+        sBuff->addr = addr;
+        sBuff->packType = READ_PARAMS;
+        sBuff->data[0]= 3;
+        forSendSize = crc16mb(sendBuff, 5);
+        forSendArrow = 0;
+        forSenfType = GET_VERS;
         }
+
+        //Чтение заводских данных (серийник+дата производства)
+        void sGetManufactured(){
+        sBuff->addr = addr;
+        sBuff->packType = READ_PARAMS;
+        sBuff->data[0]= 0;
+        forSendSize = crc16mb(sendBuff, 5);
+        forSendArrow = 0;
+        forSenfType = GET_MANUF;
+        }
+
         //запрос сетевого адреса
         void sGetAddr(){
             sBuff->addr = 0; 
@@ -213,15 +236,37 @@
             forSenfType = GET_ADDR;
             //esp_log_printf_(ESPHOME_LOG_LEVEL_ERROR, "HALLO", __LINE__, "sGetAddr");   
         }
-        // запрос показаний
+        // запрос суммы показаний
         void sGetValue(){
             sBuff->addr=addr;
             sBuff->packType = LIST;
-            sBuff->data[0] =0; // энергия по сумме тарифов
+            sBuff->data[0] = 0; // энергия по сумме тарифов
             sBuff->data[1] = 0; // за весь период работы
             forSendSize = crc16mb(sendBuff,6); // возврат размера пакета
             forSendArrow = 0;
             forSenfType = GET_VALUE;
+        }
+
+        // чтение показаний тарифа 1
+        void sGetValueT1(){
+            sBuff->addr=addr;
+            sBuff->packType = LIST;
+            sBuff->data[0] = 0; // за весь период работы
+            sBuff->data[1] = 1; // T1
+            forSendSize = crc16mb(sendBuff,6); // возврат размера пакета
+            forSendArrow = 0;
+            forSenfType = GET_VALUE_T1;
+        }
+
+        // чтение показаний тарифа 2
+        void sGetValueT2(){
+            sBuff->addr=addr;
+            sBuff->packType = LIST;
+            sBuff->data[0] = 0; // за весь период работы
+            sBuff->data[1] = 2; // T2
+            forSendSize = crc16mb(sendBuff,6); // возврат размера пакета
+            forSendArrow = 0;
+            forSenfType = GET_VALUE_T2;
         }
 
         // возврат ошибок
@@ -313,6 +358,18 @@
             if(this->ValueA!=nullptr && _Aa!=Aa){_Aa=Aa; this->ValueA->publish_state(Aa);}
             if(this->ValueR!=nullptr && _Ar!=Ar){_Ar=Ar; this->ValueR->publish_state(Ar);}
         }
+        void _cbValuesT1(float Aa, float Ar){// будет вызвана при получении показаний
+            static float _Aa=-_Aa;
+            static float _Ar=-_Ar;
+            if(this->ValueAT1!=nullptr && _Aa!=Aa){_Aa=Aa; this->ValueAT1->publish_state(Aa);}
+            if(this->ValueRT1!=nullptr && _Ar!=Ar){_Ar=Ar; this->ValueRT1->publish_state(Ar);}
+        }
+        void _cbValuesT2(float Aa, float Ar){// будет вызвана при получении показаний
+            static float _Aa=-_Aa;
+            static float _Ar=-_Ar;
+            if(this->ValueAT2!=nullptr && _Aa!=Aa){_Aa=Aa; this->ValueAT2->publish_state(Aa);}
+            if(this->ValueRT2!=nullptr && _Ar!=Ar){_Ar=Ar; this->ValueRT2->publish_state(Ar);}
+        }
         // для трансляции принятого пакета
         void inDataReady(uint8_t size, uint8_t* buff){
            memcpy(inPacket,buff,size);
@@ -365,13 +422,13 @@
                     } else if (forSenfType == GET_KOEF_POWER){ // ответ на запрос коэфициентов
                         fromReadArrow=0;
                         lastError=REP_OK;
-                        _cbKoef((float)dm32_3(readBuff+1)/100, 
-                                (float)dm32_3(readBuff+4)/100,
-                                (float)dm32_3(readBuff+7)/100);
+                        _cbKoef((float)dm32_3(readBuff+1)/1000, 
+                                (float)dm32_3(readBuff+4)/1000,
+                                (float)dm32_3(readBuff+7)/1000);
                     } else if (forSenfType == GET_ANGLE_PH){ // ответ на запрос углов
                         fromReadArrow=0;
                         lastError=REP_OK;
-                        _cbAngles((float)dm32_3(readBuff+1)/100, 
+                        _cbAngles((float)dm32_3(readBuff+1)/100-240, 
                                 (float)dm32_3(readBuff+4)/100,
                                 (float)dm32_3(readBuff+7)/100);
                     } else if (forSenfType == GET_CURRENT){ // ответ на запрос тока
@@ -386,6 +443,15 @@
                         fromReadArrow=0;
                         lastError=REP_OK;
                         _cbFreq((float)dm32_3(readBuff+1)/100);
+                    } else if (forSenfType == GET_VERS){ // ответ на запрос версии прошивки
+                        char temp[15]={0};
+                        // получаем версию
+                        if(this->sn_string!=nullptr) {
+                            snprintf(temp, sizeof(temp)-1, "%d.%02d.%02d",readBuff[1],readBuff[2],readBuff[3]);
+                            this->vers_string->publish_state(temp);
+                        }
+                        fromReadArrow=0;
+                        lastError=REP_OK;
                     }
                 } else if (fromReadArrow == 19){ // 19 байт
                     if (forSenfType == GET_VERS){
@@ -409,9 +475,31 @@
                         fromReadArrow=0;
                         lastError=REP_OK;
                         _cbValues((float)dm32_4(readBuff+1)/1000, (float)dm32_4(readBuff+9)/1000);
-                    }            
+                    } else if (forSenfType == GET_VALUE_T1){ // показания Т1 Активные, Реактивные
+                        fromReadArrow=0;
+                        lastError=REP_OK;
+                        _cbValuesT1((float)dm32_4(readBuff+1)/1000, (float)dm32_4(readBuff+9)/1000);
+                    } else if (forSenfType == GET_VALUE_T2){ // показания Т2 Активные, Реактивные
+                        fromReadArrow=0;
+                        lastError=REP_OK;
+                        _cbValuesT2((float)dm32_4(readBuff+1)/1000, (float)dm32_4(readBuff+9)/1000);
+                    }
                 } else if (fromReadArrow == 17){ //17 байт
                     //...
+                } else if (fromReadArrow == 10){ // 10 байт
+                    if (forSenfType == GET_MANUF){
+                        char temp[15]={0};
+                        if(this->sn_string!=nullptr){ //серийный номер
+                            snprintf(temp, sizeof(temp)-1, "%02d%02d%02d%02d",readBuff[1],readBuff[2],readBuff[3],readBuff[4]);
+                            this->sn_string->publish_state(temp);
+                        }
+                        if(this->fab_date_string!=nullptr){ //дата изготовления
+                            snprintf(temp, sizeof(temp)-1, "%d/%02d/%02d",readBuff[5],readBuff[6],readBuff[7]);
+                            this->fab_date_string->publish_state(temp);
+                        }
+                        fromReadArrow=0;
+                        lastError=REP_OK;
+                    }
                 }
             } else { // данные чужого счетчика
                 fromReadArrow=0; // сбрасываем данные  
@@ -433,12 +521,11 @@
         // проверка наличия данных для отправки, за одно цикл обработки
         uint8_t availableMerc(){
             uint32_t _now=millis();
-            static uint8_t counter=0;
 
             // КОНТРОЛЬ НЕ ОТВЕТА
             if(waiteReply && _now-timeReadByte>ABORT_RECIVE_TIME){ // отслеживаем таймаут приема байта
                 waiteReply = false; 
-                if(counter>5){ // поднимаем ошибки только на запросах данных
+                if(counter>2){ // поднимаем ошибки только на запросах данных
                     lastError=ERROR_TIMEOUT;
                 }
                 procError=true;  // поднимаем ошибку для повтора цикла инициализации
@@ -454,22 +541,26 @@
             if(_now-scanTimer>=scanPeriod){ // таймер шиклов опроса  
                 if(!waiteReply && _now-timeSendByte>=PACKET_MIN_DELAY){  // ТАЙМЕР МЕЖПАкЕТНОГО ИНТРЕВАЛА, одновременно ждем ответ
                     timeSendByte=_now;
-                    while(counter<=10){
+                    while(counter<=13){
                         if      (counter==0){sConnect(); break;} // на нулевом шаге пожимаем руку
                         else if (counter==1){sAccess(); break;}  // далее просим доступ
                         // поиск адреса только если он нулевой и пока не найдем дальше не работаем
-                        else if (counter==2 && addr==0){sGetAddr(); counter=11; procError=true; break;} 
-                        else if (counter==3){sGetVers(); break;}     // далее версию, дату изготовления, серийник
-                        else if (counter==4){if(cbValues){sGetValue();  break;}}   // показания
-                        else if (counter==5){if(cbPower){sGetPower(); break;}}     // на этом шаге можем считать мощность
-                        else if (counter==6){if(cbVolt){sGetVoltage(); break;}}    // вольты
-                        else if (counter==7){if(cbCurrent){sGetCurrent(); break;}} // ток
-                        else if (counter==8){if(cbKoef){sGetKoefPower(); break;}}  // коэфициенты
-                        else if (counter==9){if(cbAngles){sGetAnglePh(); break;}}  // углы
-                        else if (counter==10){if(cbFreq){sGetFreq(); break;}}      // частота
+                        else if (counter==2 && addr==0){sGetAddr(); counter=14; procError=true; break;} 
+                        //else if (counter==3){sGetVers(); break;}     // далее версию, дату изготовления, серийник
+                        else if (counter==3){sGetVers_old(); break;}     // далее версию
+                        else if (counter==4){sGetManufactured(); break;}     // далее дату изготовления, серийник
+                        else if (counter==5){if(cbValues){sGetValue();  break;}}   // показания
+                        else if (counter==6){if(cbPower){sGetPower(); break;}}     // на этом шаге можем считать мощность
+                        else if (counter==7){if(cbVolt){sGetVoltage(); break;}}    // вольты
+                        else if (counter==8){if(cbCurrent){sGetCurrent(); break;}} // ток
+                        else if (counter==9){if(cbKoef){sGetKoefPower(); break;}}  // коэфициенты
+                        else if (counter==10){if(cbAngles){sGetAnglePh(); break;}}  // углы
+                        else if (counter==11){if(cbFreq){sGetFreq(); break;}}      // частота
+                        else if (counter==12){if(cbValues){sGetValueT1();  break;}}   // показания T1
+                        else if (counter==13){if(cbValues){sGetValueT2();  break;}}   // показания T2
                         counter++;
                     }
-                    if(counter++>10){ // зацикливание счетчика
+                    if(counter++>13){ // зацикливание счетчика
                         if(_now-scanTimer>2*scanPeriod){ // еСЛИ ВРЕМЯ ПЕРИОДА прешышает требуемое значительно
                             scanTimer=_now; // то сбрасываем таймер - пофиг регулярность
                         } else {
@@ -479,7 +570,7 @@
                             procError=false;
                             counter=0;  // пройдем весь цикл запросов, возможно снова нужна авторизация
                         } else {
-                            counter=3; // если без ошибок, то повторной инициализации не нужно, просто опросим параметры
+                            counter=5; // если без ошибок, то повторной инициализации не нужно, просто опросим параметры
                         }
                     }
                 }
